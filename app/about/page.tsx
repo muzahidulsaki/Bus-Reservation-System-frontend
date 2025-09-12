@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import styles from './about.module.css';
 
 interface AboutData {
   id: number;
@@ -82,11 +81,13 @@ export default function AboutUs() {
 
   if (loading) {
     return (
-      <div className={styles.pageContainer}>
+      <div className="min-h-screen flex flex-col">
         <Header />
-        <div className={styles.loading}>
-          <div className={styles.spinner}></div>
-          <p>Loading about information...</p>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading about information...</p>
+          </div>
         </div>
         <Footer />
       </div>
@@ -95,13 +96,15 @@ export default function AboutUs() {
 
   if (error) {
     return (
-      <div className={styles.pageContainer}>
+      <div className="min-h-screen flex flex-col">
         <Header />
-        <div className={styles.error}>
-          <p>{error}</p>
-          <button onClick={fetchAboutData} className={styles.retryBtn}>
-            Try Again
-          </button>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center bg-red-50 p-8 rounded-lg border border-red-200">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button onClick={fetchAboutData} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition duration-300">
+              Try Again
+            </button>
+          </div>
         </div>
         <Footer />
       </div>
@@ -109,79 +112,81 @@ export default function AboutUs() {
   }
 
   return (
-    <div className={styles.pageContainer}>
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
       
-      <main className={styles.main}>
-        <div className={styles.container}>
+      <main className="flex-1 py-12">
+        <div className="container mx-auto px-4">
           {/* Hero Section */}
-          <section className={styles.hero}>
-            <h1 className={styles.title}>🚌 {aboutData?.title}</h1>
-            <p className={styles.subtitle}>{aboutData?.content}</p>
+          <section className="text-center mb-16">
+            <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-6">🚌 {aboutData?.title}</h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">{aboutData?.content}</p>
           </section>
 
           {/* Mission, Vision, Values */}
-          <section className={styles.valuesSection}>
-            <div className={styles.valueCard}>
-              <h2>🎯 Our Mission</h2>
-              <p>{aboutData?.mission}</p>
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+            <div className="bg-white p-8 rounded-xl shadow-lg text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">🎯 Our Mission</h2>
+              <p className="text-gray-600 leading-relaxed">{aboutData?.mission}</p>
             </div>
             
-            <div className={styles.valueCard}>
-              <h2>🔮 Our Vision</h2>
-              <p>{aboutData?.vision}</p>
+            <div className="bg-white p-8 rounded-xl shadow-lg text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">🔮 Our Vision</h2>
+              <p className="text-gray-600 leading-relaxed">{aboutData?.vision}</p>
             </div>
             
-            <div className={styles.valueCard}>
-              <h2>💎 Our Values</h2>
-              <ul>
+            <div className="bg-white p-8 rounded-xl shadow-lg text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">💎 Our Values</h2>
+              <ul className="text-gray-600 space-y-2">
                 {aboutData?.values.map((value, index) => (
-                  <li key={index}>✅ {value}</li>
+                  <li key={index} className="flex items-center justify-center">
+                    <span className="text-green-500 mr-2">✅</span> {value}
+                  </li>
                 ))}
               </ul>
             </div>
           </section>
 
           {/* Team Section */}
-          <section className={styles.teamSection}>
-            <h2>👥 Our Team</h2>
-            <div className={styles.teamGrid}>
+          <section className="text-center">
+            <h2 className="text-3xl font-bold text-gray-800 mb-12">👥 Our Team</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {aboutData?.team.map((member, index) => (
-                <div key={index} className={styles.teamCard}>
-                  <div className={styles.avatar}>👤</div>
-                  <h3>{member.name}</h3>
-                  <h4>{member.position}</h4>
-                  <p>{member.description}</p>
+                <div key={index} className="bg-white p-8 rounded-xl shadow-lg text-center hover:shadow-xl transition duration-300">
+                  <div className="text-6xl mb-4">👤</div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">{member.name}</h3>
+                  <h4 className="text-primary-600 font-semibold mb-3">{member.position}</h4>
+                  <p className="text-gray-600">{member.description}</p>
                 </div>
               ))}
             </div>
           </section>
 
           {/* Stats Section */}
-          <section className={styles.statsSection}>
-            <h2>📊 Our Achievement</h2>
-            <div className={styles.statsGrid}>
-              <div className={styles.statCard}>
-                <h3>50,000+</h3>
-                <p>Happy Passengers</p>
+          <section className="bg-primary-600 text-white py-16 rounded-xl mt-16">
+            <h2 className="text-3xl font-bold text-center mb-12">📊 Our Achievement</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              <div className="bg-primary-700 p-6 rounded-lg">
+                <h3 className="text-3xl font-bold mb-2">50,000+</h3>
+                <p className="text-primary-100">Happy Passengers</p>
               </div>
-              <div className={styles.statCard}>
-                <h3>25+</h3>
-                <p>Routes Covered</p>
+              <div className="bg-primary-700 p-6 rounded-lg">
+                <h3 className="text-3xl font-bold mb-2">25+</h3>
+                <p className="text-primary-100">Routes Covered</p>
               </div>
-              <div className={styles.statCard}>
-                <h3>50+</h3>
-                <p>Modern Buses</p>
+              <div className="bg-primary-700 p-6 rounded-lg">
+                <h3 className="text-3xl font-bold mb-2">50+</h3>
+                <p className="text-primary-100">Modern Buses</p>
               </div>
-              <div className={styles.statCard}>
-                <h3>99.5%</h3>
-                <p>On-time Performance</p>
+              <div className="bg-primary-700 p-6 rounded-lg">
+                <h3 className="text-3xl font-bold mb-2">99.5%</h3>
+                <p className="text-primary-100">On-time Performance</p>
               </div>
             </div>
           </section>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
