@@ -5,6 +5,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { pusher, subscribeToBookingNotifications, subscribeToUserNotifications } from '../../lib/pusher';
 
 axios.defaults.withCredentials = true;
 const API_BASE_URL = "http://localhost:8080";
@@ -34,6 +35,10 @@ export default function BookingPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Notification states
+  const [notifications, setNotifications] = useState<string[]>([]);
+  const [showNotification, setShowNotification] = useState(false);
   
   const [formData, setFormData] = useState<BookingFormData>({
     fromLocation: '',
@@ -76,6 +81,49 @@ export default function BookingPage() {
   useEffect(() => {
     checkUserSession();
   }, []);
+
+  // Setup Pusher event listeners
+  useEffect(() => {
+    if (user) {
+      setupPusherListeners();
+    }
+    
+    return () => {
+      // Cleanup Pusher subscriptions
+      pusher.disconnect();
+    };
+  }, [user]);
+
+  const setupPusherListeners = () => {
+    if (!user) return;
+
+    // Listen to booking events
+    const bookingChannel = pusher.subscribe('bookings');
+    bookingChannel.bind('booking-created', function(data: any) {
+      console.log('New booking:', data);
+      showNotificationMessage('New booking created!');
+    });
+
+    // Listen to user notifications
+    const userChannel = pusher.subscribe(`user-${user.id}`);
+    userChannel.bind('notification', function(data: any) {
+      console.log('User notification:', data);
+      showNotificationMessage(data.message);
+    });
+  };
+
+  const showNotificationMessage = (message: string) => {
+    setNotifications(prev => [...prev, message]);
+    setShowNotification(true);
+    
+    // Auto hide notification after 5 seconds
+    setTimeout(() => {
+      setShowNotification(false);
+      setTimeout(() => {
+        setNotifications(prev => prev.slice(1));
+      }, 300);
+    }, 5000);
+  };
 
   const checkUserSession = async () => {
     try {
@@ -166,6 +214,10 @@ export default function BookingPage() {
       const response = await axios.post(`${API_BASE_URL}/booking/create`, formData);
       
       if (response.data.success) {
+        // Show success notification via Pusher (this will be triggered by backend)
+        showNotificationMessage(`✅ Booking successful! Your ticket number is: ${response.data.ticketNumber}`);
+        
+        // Also show traditional alert for immediate feedback
         alert(`✅ Booking successful! Your ticket number is: ${response.data.ticketNumber}`);
         
         // Reset form
@@ -182,8 +234,10 @@ export default function BookingPage() {
           passengerEmail: user?.email || ''
         });
         
-        // Redirect to tickets page
-        router.push('/tickets');
+        // Redirect to tickets page after a short delay
+        setTimeout(() => {
+          router.push('/tickets');
+        }, 2000);
       } else {
         alert(response.data.message || 'Booking failed. Please try again.');
       }
@@ -226,6 +280,35 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
+      
+      {/* Notification Component */}
+      {notifications.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 space-y-2">
+          {notifications.map((notification, index) => (
+            <div
+              key={index}
+              className={`bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${
+                showNotification ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="mr-2">🔔</span>
+                  <span>{notification}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setNotifications(prev => prev.filter((_, i) => i !== index));
+                  }}
+                  className="ml-4 text-white hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       
       <main className="flex-1 py-8">
         <div className="max-w-6xl mx-auto px-4">

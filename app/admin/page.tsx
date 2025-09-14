@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { 
+  pusher, 
+  subscribeToAdminNotifications, 
+  subscribeToAdminDashboard,
+  subscribeToSystemNotifications,
+  subscribeToAllAdminDashboards,
+  subscribeToUserActivity,
+  subscribeToBookingActivity 
+} from '../../lib/pusher';
 
 // ✅ Configure axios defaults
 axios.defaults.withCredentials = true;
@@ -54,8 +63,13 @@ export default function CounterAuth() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'users' | 'profile'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'users' | 'profile' | 'activity'>('dashboard');
   const router = useRouter();
+
+  // Admin notification states
+  const [notifications, setNotifications] = useState<string[]>([]);
+  const [showNotification, setShowNotification] = useState(false);
+  const [activityLog, setActivityLog] = useState<string[]>([]);
 
   // Login state
   const [loginForm, setLoginForm] = useState({
@@ -77,6 +91,84 @@ export default function CounterAuth() {
   useEffect(() => {
     checkSessionAndLoadData();
   }, []);
+
+  // Setup Admin Pusher event listeners when admin logs in
+  useEffect(() => {
+    if (admin) {
+      setupAdminPusherListeners();
+    }
+    
+    return () => {
+      // Cleanup Pusher subscriptions
+      pusher.disconnect();
+    };
+  }, [admin]);
+
+  const setupAdminPusherListeners = () => {
+    if (!admin) return;
+
+    console.log(`🔔 Setting up Pusher listeners for admin ${admin.id}`);
+
+    // 1. Admin notifications (all admins)
+    subscribeToAdminNotifications((data) => {
+      console.log('Admin notification:', data);
+      showNotificationMessage(`🔔 ${data.message}`);
+      addToActivityLog(`Admin Alert: ${data.message}`);
+    });
+
+    // 2. Personal dashboard (specific admin)
+    subscribeToAdminDashboard(admin.id, (data) => {
+      console.log('Personal dashboard notification:', data);
+      showNotificationMessage(`👤 ${data.message}`);
+      addToActivityLog(`Personal: ${data.message}`);
+    });
+
+    // 3. System notifications
+    subscribeToSystemNotifications((data) => {
+      console.log('System notification:', data);
+      showNotificationMessage(`⚠️ System: ${data.message}`);
+      addToActivityLog(`System: ${data.message}`);
+    });
+
+    // 4. All admin dashboards (broadcast)
+    subscribeToAllAdminDashboards((data) => {
+      console.log('Broadcast notification:', data);
+      showNotificationMessage(`📢 ${data.message}`);
+      addToActivityLog(`Broadcast: ${data.message}`);
+    });
+
+    // 5. User activity monitoring
+    subscribeToUserActivity((data) => {
+      console.log('User activity:', data);
+      showNotificationMessage(`👥 User Activity: ${data.message}`);
+      addToActivityLog(`User Activity: ${data.message}`);
+    });
+
+    // 6. Booking activity monitoring
+    subscribeToBookingActivity((data) => {
+      console.log('Booking activity:', data);
+      showNotificationMessage(`🎫 Booking: ${data.message}`);
+      addToActivityLog(`Booking: ${data.message}`);
+    });
+  };
+
+  const showNotificationMessage = (message: string) => {
+    setNotifications(prev => [...prev, message]);
+    setShowNotification(true);
+    
+    // Auto hide notification after 5 seconds
+    setTimeout(() => {
+      setShowNotification(false);
+      setTimeout(() => {
+        setNotifications(prev => prev.slice(1));
+      }, 300);
+    }, 5000);
+  };
+
+  const addToActivityLog = (activity: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setActivityLog(prev => [`[${timestamp}] ${activity}`, ...prev.slice(0, 49)]); // Keep last 50 activities
+  };
 
   const checkSessionAndLoadData = async () => {
     try {
@@ -348,6 +440,35 @@ export default function CounterAuth() {
       <div className="min-h-screen bg-black text-white">
         <Header />
         
+        {/* Admin Notification Component */}
+        {notifications.length > 0 && (
+          <div className="fixed top-4 right-4 z-50 space-y-2">
+            {notifications.map((notification, index) => (
+              <div
+                key={index}
+                className={`bg-yellow-500 text-black px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${
+                  showNotification ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="mr-2">🔔</span>
+                    <span className="font-medium">{notification}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setNotifications(prev => prev.filter((_, i) => i !== index));
+                    }}
+                    className="ml-4 text-black hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
         {/* Admin Navigation */}
         <nav className="bg-gray-900 border-b border-gray-700">
           <div className="container mx-auto px-4">
@@ -373,6 +494,17 @@ export default function CounterAuth() {
                   className={`px-4 py-2 rounded ${currentView === 'profile' ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'}`}
                 >
                   👤 Profile
+                </button>
+                <button
+                  onClick={() => setCurrentView('activity')}
+                  className={`px-4 py-2 rounded ${currentView === 'activity' ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'}`}
+                >
+                  📡 Live Activity
+                  {activityLog.length > 0 && (
+                    <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">
+                      {activityLog.length}
+                    </span>
+                  )}
                 </button>
               </div>
               
@@ -565,6 +697,91 @@ export default function CounterAuth() {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Real-time Activity Log View */}
+          {currentView === 'activity' && (
+            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">📡 Real-time Activity Log</h2>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                    <span className="text-green-400">Live</span>
+                  </div>
+                  <button
+                    onClick={() => setActivityLog([])}
+                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm"
+                  >
+                    Clear Log
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 h-96 overflow-y-auto">
+                {activityLog.length === 0 ? (
+                  <div className="text-center text-gray-400 py-8">
+                    <div className="text-4xl mb-4">📡</div>
+                    <p>No activity logged yet.</p>
+                    <p className="text-sm mt-2">Real-time notifications will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {activityLog.map((activity, index) => (
+                      <div key={index} className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-mono">{activity}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-blue-400 mb-2">📢 Channels Subscribed</h3>
+                  <ul className="text-sm space-y-1">
+                    <li>• admin-notifications</li>
+                    <li>• admin-dashboard-{admin.id}</li>
+                    <li>• system</li>
+                    <li>• admin-dashboards</li>
+                    <li>• users</li>
+                    <li>• bookings</li>
+                  </ul>
+                </div>
+                
+                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-green-400 mb-2">📊 Activity Stats</h3>
+                  <ul className="text-sm space-y-1">
+                    <li>Total Events: {activityLog.length}</li>
+                    <li>Session Start: {new Date().toLocaleTimeString()}</li>
+                    <li>Last Activity: {activityLog.length > 0 ? 'Just now' : 'None'}</li>
+                  </ul>
+                </div>
+                
+                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-yellow-400 mb-2">🔔 Test Notifications</h3>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => showNotificationMessage('🧪 Test notification from admin panel')}
+                      className="w-full bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm"
+                    >
+                      Test Notification
+                    </button>
+                    <button
+                      onClick={() => addToActivityLog('Manual test activity logged')}
+                      className="w-full bg-green-600 hover:bg-green-700 px-3 py-2 rounded text-sm"
+                    >
+                      Test Activity Log
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

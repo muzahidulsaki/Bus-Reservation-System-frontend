@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { pusher, subscribeToUserNotifications } from '../../lib/pusher';
 
 // ✅ Configure axios defaults
 axios.defaults.withCredentials = true;
@@ -57,6 +58,10 @@ export default function UserAuth() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   
+  // Notification states
+  const [notifications, setNotifications] = useState<string[]>([]);
+  const [showNotification, setShowNotification] = useState(false);
+  
 
   // Login state
   const [loginForm, setLoginForm] = useState({
@@ -78,6 +83,54 @@ export default function UserAuth() {
   useEffect(() => {
     checkSessionAndLoadData();
   }, []);
+
+  // Setup Pusher event listeners when user logs in
+  useEffect(() => {
+    if (user) {
+      setupPusherListeners();
+    }
+    
+    return () => {
+      // Cleanup Pusher subscriptions
+      pusher.disconnect();
+    };
+  }, [user]);
+
+  const setupPusherListeners = () => {
+    if (!user) return;
+
+    // Listen to user-specific notifications
+    const userChannel = pusher.subscribe(`user-${user.id}`);
+    userChannel.bind('notification', function(data: any) {
+      console.log('User notification:', data);
+      showNotificationMessage(data.message);
+    });
+
+    // Listen to profile update notifications
+    userChannel.bind('profile-updated', function(data: any) {
+      console.log('Profile updated notification:', data);
+      showNotificationMessage('Your profile has been updated successfully!');
+    });
+
+    // Listen to booking notifications
+    userChannel.bind('booking-update', function(data: any) {
+      console.log('Booking update:', data);
+      showNotificationMessage(data.message);
+    });
+  };
+
+  const showNotificationMessage = (message: string) => {
+    setNotifications(prev => [...prev, message]);
+    setShowNotification(true);
+    
+    // Auto hide notification after 5 seconds
+    setTimeout(() => {
+      setShowNotification(false);
+      setTimeout(() => {
+        setNotifications(prev => prev.slice(1));
+      }, 300);
+    }, 5000);
+  };
 
   const checkSessionAndLoadData = async () => {
     try {
@@ -435,6 +488,35 @@ export default function UserAuth() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <Header />
+        
+        {/* Notification Component */}
+        {notifications.length > 0 && (
+          <div className="fixed top-4 right-4 z-50 space-y-2">
+            {notifications.map((notification, index) => (
+              <div
+                key={index}
+                className={`bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${
+                  showNotification ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="mr-2">🔔</span>
+                    <span>{notification}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setNotifications(prev => prev.filter((_, i) => i !== index));
+                    }}
+                    className="ml-4 text-white hover:text-gray-200"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         
         <main className="container mx-auto px-4 py-8">
           {/* Welcome Section */}
