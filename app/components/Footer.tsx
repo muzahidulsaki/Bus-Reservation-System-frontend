@@ -5,13 +5,11 @@ export default function Footer() {
     <footer className="bg-gray-800 text-white">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* কোম্পানি ইনফো */}
           <div>
             <h4 className="text-xl font-bold mb-4 text-primary-400">🚌 Vati Bangla Express</h4>
             <p className="text-gray-300 leading-relaxed">Fast, Safe & Reliable transportation service connecting major cities across Bangladesh.</p>
           </div>
 
-          {/* কুইক লিঙ্কস */}
           <div>
             <h4 className="text-xl font-bold mb-4 text-primary-400">🔗 Quick Links</h4>
             <ul className="space-y-2">
@@ -33,7 +31,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* যোগাযোগ */}
           <div>
             <h4 className="text-xl font-bold mb-4 text-primary-400">📞 Contact Information</h4>
             <div className="space-y-2 text-gray-300">
@@ -46,7 +43,6 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* কপিরাইট */}
       <div className="bg-gray-900 py-4">
         <div className="container mx-auto px-4 text-center">
           <p className="text-gray-400">

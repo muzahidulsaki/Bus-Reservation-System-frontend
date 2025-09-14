@@ -121,7 +121,7 @@ export default function BusDetailsPage() {
         <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
           {/* Header Section */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-6">
-            <h1 className="text-2xl font-bold flex items-center">
+            <h1 className="text-2xl font-bold flex items-center text-gray-800">
               🚌 {busData.company}
             </h1>
             <h2 className="text-xl mt-2 opacity-90">{busData.name}</h2>

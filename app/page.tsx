@@ -2,12 +2,29 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import axios from "axios";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+
+// ✅ Configure axios defaults
+axios.defaults.withCredentials = true;
+axios.defaults.timeout = 10000;
+
+const API_BASE_URL = "http://localhost:8080";
+
+interface User {
+  id: number;
+  fullName: string;
+  email: string;
+  role: string;
+  status: string;
+}
 
 export default function HomePage() {
   const [isVisible, setIsVisible] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const testimonials = [
     { text: "Very smooth booking experience! The website is user-friendly and fast.", author: "Anika Rahman" },
@@ -21,35 +38,63 @@ export default function HomePage() {
     const interval = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
     }, 4000);
+    
+    // Check user session on page load
+    checkUserSession();
+    
     return () => clearInterval(interval);
   }, []);
 
+  const checkUserSession = async () => {
+    try {
+      console.log("🔍 Checking user session...");
+      
+      const response = await axios.get(`${API_BASE_URL}/user/check-session`);
+      
+      if (response.data.isLoggedIn) {
+        setUser(response.data.user);
+        console.log("✅ User logged in:", response.data.user.fullName);
+      } else {
+        console.log("❌ No active session");
+      }
+    } catch (error) {
+      console.log("⚠️ Session check failed:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSearchBuses = () => {
-    // Scroll to popular routes section
-    document.getElementById('popular-routes')?.scrollIntoView({ 
-      behavior: 'smooth' 
-    });
+    if (user) {
+      // If user is logged in, redirect to booking page
+      window.location.href = '/booking';
+    } else {
+      // If not logged in, scroll to popular routes section
+      document.getElementById('popular-routes')?.scrollIntoView({ 
+        behavior: 'smooth' 
+      });
+    }
   };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header Component */}
+      {/* Header Component - Handles login/logout state automatically */}
       <Header />
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-primary-600 to-primary-800 text-black py-20 px-4">
         <div className="container mx-auto text-center">
           <h2 className={`text-4xl md:text-6xl font-bold mb-6 transition-all duration-1000 text-black ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            Book Your Bus Ticket Online
+            {user ? `Welcome back, ${user.fullName}!` : 'Book Your Bus Ticket Online'}
           </h2>
           <p className={`text-xl md:text-2xl mb-8 transition-all duration-1000 delay-200 text-black ${isVisible ? 'opacity-90 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-             Quick, Easy & Secure Online Ticket Booking 
+            {user ? 'Ready for your next journey?' : 'Quick, Easy & Secure Online Ticket Booking'}
           </p>
           <button 
             className={`bg-white text-black hover:bg-gray-100 px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg ${isVisible ? 'opacity-100 translate-y-0 delay-400' : 'opacity-0 translate-y-8'}`}
             onClick={handleSearchBuses}
           >
-            🔍 Search Buses
+            {user ? '🎫 Book New Ticket' : '🔍 Search Buses'}
           </button>
         </div>
       </section>
@@ -74,8 +119,42 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* User Dashboard Section (Only for logged in users) */}
+      {user && (
+        <section className="py-16 px-4 bg-white">
+          <div className="container mx-auto">
+            <h3 className="text-3xl font-bold text-center text-gray-800 mb-12">📊 Your Dashboard</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Link href="/booking" className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 hover:shadow-lg transition duration-300 text-center">
+                <div className="text-3xl mb-4">�</div>
+                <div className="text-lg font-semibold text-gray-800 mb-2">Book Ticket</div>
+                <div className="text-gray-600">Book your next journey</div>
+              </Link>
+              
+              <Link href="/tickets" className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 hover:shadow-lg transition duration-300 text-center">
+                <div className="text-3xl mb-4">🎫</div>
+                <div className="text-lg font-semibold text-gray-800 mb-2">My Tickets</div>
+                <div className="text-gray-600">View and manage your tickets</div>
+              </Link>
+              
+              <Link href="/user" className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 hover:shadow-lg transition duration-300 text-center">
+                <div className="text-3xl mb-4">👤</div>
+                <div className="text-lg font-semibold text-gray-800 mb-2">My Profile</div>
+                <div className="text-gray-600">Update your information</div>
+              </Link>
+              
+              <Link href="/tickets" className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200 hover:shadow-lg transition duration-300 text-center">
+                <div className="text-3xl mb-4">📈</div>
+                <div className="text-lg font-semibold text-gray-800 mb-2">Travel History</div>
+                <div className="text-gray-600">See your past journeys</div>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Popular Routes */}
-      <section id="popular-routes" className="py-16 px-4 bg-white">
+      <section id="popular-routes" className={`py-16 px-4 ${user ? 'bg-gray-50' : 'bg-white'}`}>
         <div className="container mx-auto">
           <h3 className="text-3xl font-bold text-center text-gray-800 mb-12">🛣️ Popular Bus Routes</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -110,11 +189,11 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="bg-white p-8 rounded-xl shadow-lg">
               <p className="text-gray-700 text-lg mb-4 italic">"{testimonials[currentTestimonial].text}"</p>
-              <div className="text-primary-600 font-semibold">- {testimonials[currentTestimonial].author}</div>
+              <div className="text-primary-600 font-semibold text-black">- {testimonials[currentTestimonial].author}</div>
             </div>
             <div className="bg-white p-8 rounded-xl shadow-lg">
               <p className="text-gray-700 text-lg mb-4 italic">"{testimonials[(currentTestimonial + 1) % testimonials.length].text}"</p>
-              <div className="text-primary-600 font-semibold">- {testimonials[(currentTestimonial + 1) % testimonials.length].author}</div>
+              <div className="text-primary-600 font-semibold text-black">- {testimonials[(currentTestimonial + 1) % testimonials.length].author}</div>
             </div>
           </div>
         </div>
